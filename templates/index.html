@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jupiter FAQ Bot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>Jupiter FAQ Bot</h1>
+            </div>
+            <p class="subtitle">Get instant answers to your Jupiter app questions</p>
+        </header>
+
+        <div class="chat-container">
+            <div class="messages-container" id="messages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <i class="fas fa-robot message-icon"></i>
+                        <div class="message-text">
+                            Hello! I'm here to help you with questions about Jupiter's services, features, and policies. What would you like to know?
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form class="input-form" id="questionForm">
+                <div class="input-group">
+                    <textarea 
+                        id="questionInput" 
+                        name="question" 
+                        placeholder="Type your question here..." 
+                        required
+                        rows="3"
+                    ></textarea>
+                    <button type="submit" id="submitBtn">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Ask</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="related-questions" id="relatedQuestions" style="display: none;">
+            <h4><i class="fas fa-lightbulb"></i> Related Questions</h4>
+            <ul id="relatedList"></ul>
+        </div>
+
+        <div class="footer">
+            <p>
+                <i class="fas fa-info-circle"></i>
+                Can't find what you're looking for? 
+                <a href="#" onclick="showContact()">Contact Support</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Thinking...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

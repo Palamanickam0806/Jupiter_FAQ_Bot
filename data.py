@@ -112,7 +112,7 @@ def preprocess_data(input_file, output_file):
 # Example usage
 if __name__ == "__main__":
     input_file = 'faqs_2.json'  # Input JSON file with scraped data
-    output_file = 'processed_faq.json'  # Output JSON file for cleaned data
+    output_file = 'cleaned_faq.json'  # Output JSON file for cleaned data
     processed_data = preprocess_data(input_file, output_file)
     print(f"Processed {len(processed_data)} unique FAQs and saved to {output_file}")
 

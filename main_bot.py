@@ -4,20 +4,13 @@ import logging
 import os
 from dotenv import load_dotenv
 load_dotenv()
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
+
 app = Flask(__name__)
 faq_bot = FAQBot()
-# # Initialize FAQ bot
-# try:
-#     faq_bot = FAQBot()
-#     logger.info("FAQ bot initialized successfully")
-# except Exception as e:
-#     logger.error(f"Failed to initialize FAQ bot: {e}")
-#     faq_bot = None
+test_queries = []
 
 @app.route('/')
 def index():
@@ -26,7 +19,6 @@ def index():
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    """Handle FAQ questions"""
     if not faq_bot:
         return jsonify({
             "error": "FAQ bot not initialized. Please check server logs.",
@@ -35,15 +27,13 @@ def ask():
         }), 500
     
     try:
-        # Handle both form data and JSON requests
         if request.is_json:
             data = request.get_json()
             user_question = data.get('question', '').strip()
         else:
             user_question = request.form.get('question', '').strip()
-        
+        test_queries.append(user_question)
         result = faq_bot.answer_question(user_question)
-        print(result)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in /ask endpoint: {e}")
@@ -55,7 +45,6 @@ def ask():
 
 @app.route('/api/ask', methods=['POST'])
 def api_ask():
-    """API endpoint for questions (JSON only)"""
     if not faq_bot:
         return jsonify({"error": "Service unavailable"}), 503
     
@@ -65,6 +54,7 @@ def api_ask():
             return jsonify({"error": "Question is required"}), 400
         
         user_question = data['question'].strip()
+        test_queries.append(user_question)
         result = faq_bot.answer_question(user_question)
         return jsonify(result)
     except Exception as e:
@@ -73,16 +63,15 @@ def api_ask():
 
 @app.route('/evaluate', methods=['GET'])
 def evaluate():
-    """Evaluation endpoint for testing"""
     if not faq_bot:
         return jsonify({"error": "FAQ bot not initialized"}), 500
     
-    test_queries = [
-        "What are the fees for the Edge+ card?",
-        "How do I complete KYC?",
-        "What rewards can I get?",
-        "Random unrelated question"
-    ]
+    # test_queries = [
+    #     "What are the fees for the Edge+ card?",
+    #     "How do I complete KYC?",
+    #     "What rewards can I get?",
+    #     "Random unrelated question"
+    # ]
     
     results = []
     for query in test_queries:
@@ -107,7 +96,6 @@ def evaluate():
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
     return jsonify({
         "status": "healthy" if faq_bot else "unhealthy",
         "faq_count": len(faq_bot.faq_data) if faq_bot else 0,
@@ -122,13 +110,11 @@ def not_found(error):
 def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
-# if __name__ == "__main__":
-#     port = int(os.environ.get('PORT', 5000))
-#     debug = os.environ.get('FLASK_ENV') == 'development'
-#     app.run(debug=debug, port=port, host='0.0.0.0')
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    # debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(debug=True, port=port)
 
 
 

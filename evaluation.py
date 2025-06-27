@@ -1,87 +1,116 @@
-import json
-import os
-import time
+import json, os, time
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 
-# 1. Load FAQ data
-with open("cleaned_faq.json", "r", encoding="utf-8") as f:
-    faq_data = json.load(f)
+with open("cleaned_faq.json", encoding="utf-8") as f:
+    faq = json.load(f)
 
-# 2. Init Gemini LLM
+QUESTIONS = [item["question"] for item in faq]
+ANSWERS   = [item["answer"]   for item in faq]
+QUESTIONS = QUESTIONS[0:100]
+ANSWERS   = ANSWERS[0:100] 
+
+EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-llm = genai.GenerativeModel("gemini-pro")
+GEMINI = genai.GenerativeModel("gemini-pro")
 
-# 3. Init Embedding Model
-model = SentenceTransformer("all-MiniLM-L6-v2")
+QUESTION_EMB = EMBED_MODEL.encode(QUESTIONS, normalize_embeddings=True)   # (N, d)
+ANSWER_EMB   = EMBED_MODEL.encode(ANSWERS,   normalize_embeddings=True)   # (N, d)  # for later scoring
 
-# 4. Prepare corpus and embeddings
-questions = [item["question"] for item in faq_data]
-answers = [item["answer"] for item in faq_data]
-answer_embeddings = model.encode(answers, normalize_embeddings=True)
+# If you already have a Chroma DB with the questions embedded, plug it in here.
+# Otherwise we’ll fall back to plain cosine similarity search.
+CHROMA_DB = None               # ← inject your vector store instance if available
+TOP_K     = 1                  # always take the best hit
 
-# 5. Loop through all questions and evaluate
-retrieval_similarities = []
-llm_similarities = []
-retrieval_latencies = []
-llm_latencies = []
 
-results = []
+def retrieve_with_chroma(query: str, top_k: int = 1):
+    """Return [(question, answer, similarity)] using Chroma or in-memory search."""
+    if CHROMA_DB is not None:
+        results = CHROMA_DB.similarity_search_with_score(query, k=top_k)
+        hits = []
+        for doc, chroma_score in results:
+            if doc.page_content.strip().lower() == query.strip().lower():
+                continue
+            sim = evaluate_similarity(query, doc.page_content)
+            hits.append((doc.page_content, doc.metadata["answer"], sim))
+        return hits[:top_k]
 
-for i, item in enumerate(faq_data):
-    question = item["question"]
-    ground_truth = item["answer"]
+    # ─ fallback: cosine sim against QUESTION_EMB ─
+    q_vec = EMBED_MODEL.encode([query], normalize_embeddings=True)
+    sims  = cosine_similarity(q_vec, QUESTION_EMB)[0]          # (N,)
+    best = sims.argsort()[::-1][:top_k]
+    return [(QUESTIONS[i], ANSWERS[i], sims[i]) for i in best]
 
-    # Encode question
-    question_vec = model.encode([question], normalize_embeddings=True)
 
-    # --- Retrieval-based ---
-    start_r = time.time()
-    sims = cosine_similarity(question_vec, answer_embeddings)[0]
-    best_idx = np.argmax(sims)
-    best_answer = answers[best_idx]
-    retrieval_score = sims[best_idx]
-    end_r = time.time()
+def evaluate_similarity(text_a: str, text_b: str) -> float:
+    """Semantic similarity in [-1, 1]."""
+    emb = EMBED_MODEL.encode([text_a, text_b], normalize_embeddings=True)
+    return cosine_similarity(emb[0:1], emb[1:2])[0, 0]
 
-    # --- LLM-based ---
-    start_l = time.time()
-    prompt = f"A user asked: '{question}'. Based on typical banking FAQs, respond in a simple, friendly tone."
-    llm_response = llm.generate_content(prompt)
-    llm_answer = llm_response.text.strip() if llm_response.text else ""
-    end_l = time.time()
 
-    # Semantic similarity between LLM answer and GT
-    llm_score = cosine_similarity(
-        model.encode([llm_answer], normalize_embeddings=True),
-        model.encode([ground_truth], normalize_embeddings=True)
-    )[0][0]
+def call_gemini(prompt: str) -> str:
+    """Robust Gemini wrapper → plain text string."""
+    try:
+        resp = GEMINI.generate_content(prompt)
+        return resp.text.strip() if hasattr(resp, "text") and resp.text else ""
+    except Exception as exc:
+        print("Gemini error:", exc)
+        return ""
 
-    results.append({
-        "question": question,
-        "retrieved_answer": best_answer,
-        "retrieval_similarity": retrieval_score,
-        "retrieval_latency": end_r - start_r,
-        "llm_answer": llm_answer,
-        "llm_similarity": llm_score,
-        "llm_latency": end_l - start_l
-    })
+records = []
 
-    retrieval_similarities.append(retrieval_score)
-    retrieval_latencies.append(end_r - start_r)
-    llm_similarities.append(llm_score)
-    llm_latencies.append(end_l - start_l)
+for q, gt in zip(QUESTIONS, ANSWERS):
+    # ---------- Retrieval ----------
+    t0 = time.time()
+    hits = retrieve_with_chroma(q, top_k=TOP_K)
+    t1 = time.time()
 
-# 6. Final average scores
-print(f"\n📊 Retrieval:")
-print(f" - Avg Cosine Similarity (Accuracy Proxy): {np.mean(retrieval_similarities):.4f}")
-print(f" - Avg Latency: {np.mean(retrieval_latencies):.2f} seconds")
+    if hits:
+        _, retrieved_answer, _ = hits[0]
+        retr_acc = evaluate_similarity(retrieved_answer, gt)
+    else:
+        retrieved_answer, retr_acc = "", 0.0
 
-print(f"\n🤖 LLM (Gemini):")
-print(f" - Avg Semantic Similarity: {np.mean(llm_similarities):.4f}")
-print(f" - Avg Latency: {np.mean(llm_latencies):.2f} seconds")
+    # ---------- LLM ----------
+    t2 = time.time()
+    llm_answer = call_gemini(
+        f"A user asked: “{q}”. "
+        "Answer in a concise, friendly tone suited for banking FAQs."
+    )
+    t3 = time.time()
 
-# Optional: save results
-pd.DataFrame(results).to_csv("faq_comparison_report.csv", index=False)
+    llm_acc = evaluate_similarity(llm_answer, gt)
+
+    records.append(
+        {
+            "question": q,
+            "ground_truth": gt,
+            "retrieved_answer": retrieved_answer,
+            "retrieval_similarity": retr_acc,
+            "retrieval_latency_sec": t1 - t0,
+            "llm_answer": llm_answer,
+            "llm_similarity": llm_acc,
+            "llm_latency_sec": t3 - t2,
+        }
+    )
+
+df = pd.DataFrame(records)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4. Aggregate metrics
+# ──────────────────────────────────────────────────────────────────────────────
+print("\n📊 Retrieval-based:")
+print(f"  • Avg semantic similarity: {df['retrieval_similarity'].mean():.4f}")
+print(f"  • Avg latency:             {df['retrieval_latency_sec'].mean():.2f}s")
+
+print("\n🤖 Gemini LLM:")
+print(f"  • Avg semantic similarity: {df['llm_similarity'].mean():.4f}")
+print(f"  • Avg latency:             {df['llm_latency_sec'].mean():.2f}s")
+
+df.to_csv("faq_comparison_report.csv", index=False)
+print("\n✅ Saved faq_comparison_report.csv")

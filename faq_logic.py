@@ -8,21 +8,15 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
-
 from langchain_core.output_parsers import StrOutputParser
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 
-# Load environment variables
+
 load_dotenv()
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Toggle ONNX usage via .env
 USE_ONNX = os.getenv("USE_ONNX", "false").lower() == "true"
 
 

@@ -1,4 +1,6 @@
-Untitled.ipynb
+*.ipynb
 .env
-chroma_db
-env_jup
+chroma_db/
+env_jup/
+venv/
+.venv/

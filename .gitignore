@@ -1,4 +1,4 @@
 *.ipynb
 .env
 chroma_db/
-env_jup/
+venvjup/

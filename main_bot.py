@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
+os.environ["CHROMA_TELEMETRY_ENABLED"] = "FALSE"
+os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+import chromadb.config
+chromadb.config.Settings.anonymized_telemetry = False
 app = Flask(__name__)
 faq_bot = FAQBot()
 test_queries = []

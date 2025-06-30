@@ -220,6 +220,7 @@ Response:  For general convo like 'hi' or 'how are you', respond with a friendly
                             "answer": retrieved_doc.metadata['answer'],
                             "category": retrieved_doc.metadata.get('category', 'General')
                         }).strip()
+                        print(f"LLM Response: {response} , {user_question}")
                     except Exception as e:
                         logger.error(f"Error generating LLM response: {e}")
                         response = retrieved_doc.metadata['answer']

@@ -6,10 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-os.environ["CHROMA_TELEMETRY_ENABLED"] = "FALSE"
-os.environ['ANONYMIZED_TELEMETRY'] = 'False'
-import chromadb.config
-chromadb.config.Settings.anonymized_telemetry = False
+# os.environ["CHROMA_TELEMETRY_ENABLED"] = "FALSE"
+# os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+# import chromadb.config
+# chromadb.config.Settings.anonymized_telemetry = False
 app = Flask(__name__)
 faq_bot = FAQBot()
 test_queries = []
@@ -36,6 +36,7 @@ def ask():
             user_question = request.form.get('question', '').strip()
         test_queries.append(user_question)
         result = faq_bot.answer_question(user_question)
+        print(result)
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in /ask endpoint: {e}")

@@ -196,7 +196,7 @@ Response:  For general convo like 'hi' or 'how are you', respond with a friendly
                 "similarity_score": 0.0,
                 "source": "validation"
             }
-
+        
         if not self.chroma_db:
             return {
                 "response": "FAQ service is currently unavailable. Please contact support.",
@@ -208,7 +208,7 @@ Response:  For general convo like 'hi' or 'how are you', respond with a friendly
         try:
             user_question = user_question.strip()
             results = self.chroma_db.similarity_search_with_score(user_question, k=1)
-
+            
             if results:
                 retrieved_doc, _ = results[0]
                 similarity_score = self.evaluate_similarity(user_question, retrieved_doc.page_content)

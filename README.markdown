@@ -167,7 +167,3 @@ The **Jupiter FAQ Bot** is a Flask-based web application designed to provide ins
 ## Contributing
 
 Contributions are welcome! Please submit issues or pull requests to the repository at `https://github.com/Palamanickam0806/Jupiter_FAQ_Bot`.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.

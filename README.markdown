@@ -84,6 +84,7 @@ The **Jupiter FAQ Bot** is a Flask-based web application designed to provide ins
      FAQ_FILE_PATH=cleaned_faq.json
      USE_ONNX=false
      SIMILARITY_THRESHOLD=0.7
+     PORT=5000
      ```
 
    - Install dependencies:
